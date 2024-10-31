@@ -7,6 +7,7 @@ import logging
 from flask_cors import CORS
 from transformers import pipeline
 from concurrent.futures import ThreadPoolExecutor
+import os
 
 app = Flask(__name__)
 CORS(app)
@@ -63,19 +64,14 @@ def chunk_text(text, max_chunk_size=1024):
 def summarize_text(text):
     """Summarize text using Hugging Face transformers."""
     try:
-        # Clean the text first
         cleaned_text = clean_transcription(text)
-        
-        # Split into chunks if text is too long
         chunks = chunk_text(cleaned_text)
         summaries = []
         
         for chunk in chunks:
-            # Generate summary for each chunk
             summary = summarizer(chunk, max_length=130, min_length=30, do_sample=False)
             summaries.append(summary[0]['summary_text'])
         
-        # Combine all summaries
         final_summary = " ".join(summaries)
         return final_summary
     except Exception as e:
@@ -96,7 +92,6 @@ def index():
         video_url = request.form.get('video_url')
         if video_url:
             app.logger.debug("Video URL received: %s", video_url)
-            # Use multi-threading to fetch transcription
             future = executor.submit(fetch_transcription, video_url)
             transcription = future.result()  # Wait for the result
 
@@ -108,4 +103,4 @@ def index():
     return render_template('index.html', transcription=transcription, summary=summary, error=error)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)), debug=True)
